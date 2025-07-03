@@ -47,7 +47,12 @@ class Dinosaur:
         self.dino_rect.x = self.X_POS
         self.dino_rect.y = self.Y_POS
 
+        self.alive = True  # novo atributo para controlar se o dinossauro está vivo
+
     def update(self, userInput):
+        if not self.alive:
+            return  # não atualiza se estiver "morto"
+
         if self.dino_duck:
             self.duck()
         elif self.dino_run:
@@ -95,7 +100,10 @@ class Dinosaur:
             self.jump_vel = self.JUMP_VEL
 
     def draw(self, SCREEN):
+        if not self.alive:
+            return  # não desenha se estiver "morto"
         SCREEN.blit(self.image, (self.dino_rect.x, self.dino_rect.y))
+
 
 
 class Cloud:
@@ -163,18 +171,59 @@ def main():
     run = True
     clock = pygame.time.Clock()
 
-    RUNNING = [pygame.image.load(os.path.join("Assets/Dino", "Dino1Run1.png")),
-               pygame.image.load(os.path.join("Assets/Dino", "Dino1Run2.png"))]
-    JUMPING = pygame.image.load(os.path.join("Assets/Dino", "Dino1Jump.png"))
-    DUCKING = [pygame.image.load(os.path.join("Assets/Dino", "Dino1Duck1.png")),
-               pygame.image.load(os.path.join("Assets/Dino", "Dino1Duck2.png"))]
+    
+
+    ####################################################################################################
+    # Tamanho desejado para as imagens
+    # WIDTH, HEIGHT = 60, 80  # ajuste conforme preferir
+
+    RUNNING1 = [
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Run1.png")), (87, 94)),
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Run2.png")), (87, 94))
+    ]
+    RUNNING2 = [
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Run1.png")), (87, 94)),
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Run2.png")), (87, 94))
+    ]    
+    RUNNING3 = [
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Run1.png")), (87, 94)),
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Run2.png")), (87, 94))
+    ]
+    RUNNING4 = [
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Run1.png")), (87, 94)),
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Run2.png")), (87, 94))
+    ]    
+
+    JUMPING1 = pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Jump.png")), (88, 94))
+    JUMPING2 = pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Jump.png")), (88, 94))
+    JUMPING3 = pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Jump.png")), (88, 94))
+    JUMPING4 = pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Jump.png")), (88, 94))
+
+    DUCKING1 = [
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Duck1.png")), (118, 60)),
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Duck2.png")), (118, 60))
+    ]
+    DUCKING2 = [
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Duck1.png")), (118, 60)),
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Duck2.png")), (118, 60))
+    ]
+    DUCKING3 = [
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Duck1.png")), (118, 60)),
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Duck2.png")), (118, 60))
+    ]
+    DUCKING4 = [
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Duck1.png")), (118, 60)),
+        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Duck2.png")), (118, 60))
+    ]
+
+    ####################################################################################################
 
     # Cria 4 dinossauros com controles diferentes e posições diferentes no eixo X
     players = [
-        Dinosaur(pygame.K_q, pygame.K_a, RUNNING, DUCKING, JUMPING, 50, 310, 340),
-        Dinosaur(pygame.K_w, pygame.K_s, RUNNING, DUCKING, JUMPING, 150, 310, 340),
-        Dinosaur(pygame.K_e, pygame.K_d, RUNNING, DUCKING, JUMPING, 250, 310, 340),
-        Dinosaur(pygame.K_r, pygame.K_f, RUNNING, DUCKING, JUMPING, 350, 310, 340),
+        Dinosaur(pygame.K_q, pygame.K_a, RUNNING1, DUCKING1, JUMPING1, 50, 310, 340),
+        Dinosaur(pygame.K_w, pygame.K_s, RUNNING2, DUCKING2, JUMPING2, 150, 310, 340),
+        Dinosaur(pygame.K_e, pygame.K_d, RUNNING3, DUCKING3, JUMPING3, 250, 310, 340),
+        Dinosaur(pygame.K_r, pygame.K_f, RUNNING4, DUCKING4, JUMPING4, 350, 310, 340),
     ]
 
     cloud = Cloud()
@@ -190,12 +239,13 @@ def main():
         global points, game_speed
         points += 1
         if points % 100 == 0:
-            game_speed += 1
+            game_speed = min(game_speed + 1, 60)  # limita a velocidade a no máximo 60
 
         text = font.render("Points: " + str(points), True, (0, 0, 0))
         textRect = text.get_rect()
         textRect.center = (1000, 40)
         SCREEN.blit(text, textRect)
+
 
     def background():
         global x_pos_bg, y_pos_bg
@@ -215,11 +265,7 @@ def main():
         SCREEN.fill((255, 255, 255))
         userInput = pygame.key.get_pressed()
 
-        # Atualiza e desenha todos os jogadores
-        for player in players:
-            player.draw(SCREEN)
-            player.update(userInput)
-
+        # Se não tiver obstáculos, cria um novo
         if len(obstacles) == 0:
             choice = random.randint(0, 2)
             if choice == 0:
@@ -229,17 +275,23 @@ def main():
             else:
                 obstacles.append(Bird(BIRD))
 
+        # Atualiza e desenha obstáculos, verifica colisão com jogadores vivos
         for obstacle in obstacles[:]:
             obstacle.update()
             obstacle.draw(SCREEN)
-            # Colisão com qualquer jogador
-            if any(player.dino_rect.colliderect(obstacle.rect) for player in players):
-                pygame.time.delay(2000)
-                death_count += 1
-                menu(death_count)
+
+            for player in players:
+                if player.alive and player.dino_rect.colliderect(obstacle.rect):
+                    player.alive = False  # dinossauro morreu
 
             if obstacle.rect.x < -obstacle.rect.width:
                 obstacles.remove(obstacle)
+
+        # Atualiza e desenha jogadores vivos
+        for player in players:
+            if player.alive:
+                player.update(userInput)
+                player.draw(SCREEN)
 
         background()
 
@@ -248,8 +300,16 @@ def main():
 
         score()
 
+        # Se todos morreram, termina o jogo
+        if all(not player.alive for player in players):
+            pygame.time.delay(2000)
+            death_count += 1
+            menu(death_count)
+            run = False  # para sair do loop main e voltar ao menu
+
         clock.tick(30)
         pygame.display.update()
+
 
 
 
