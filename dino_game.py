@@ -8,6 +8,14 @@ SCREEN_HEIGHT = 600
 SCREEN_WIDTH = 1350
 SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+
+# Variáveis globais de status do jogo
+dino_status = [
+    {"distancia": 0, "altura": 0} for _ in range(4)
+]
+velocidade_atual = 0
+
+
 SMALL_CACTUS = [pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus1.png")),
                 pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus2.png")),
                 pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus3.png"))]
@@ -166,7 +174,7 @@ class Bird(Obstacle):
 
 
 def main():
-    global game_speed, x_pos_bg, y_pos_bg, points, obstacles
+    global game_speed, x_pos_bg, y_pos_bg, points, obstacles, velocidade_atual
 
     run = True
     clock = pygame.time.Clock()
@@ -286,6 +294,22 @@ def main():
 
             if obstacle.rect.x < -obstacle.rect.width:
                 obstacles.remove(obstacle)
+        
+        # Atualiza as variáveis globais de status
+        if obstacles:
+            obstaculo = obstacles[0]
+            altura = obstaculo.rect.y
+            distancia = obstaculo.rect.x
+
+            for idx, player in enumerate(players):
+                dino_status[idx]["distancia"] = distancia - player.dino_rect.x
+                dino_status[idx]["altura"] = altura
+        else:
+            for status in dino_status:
+                status["distancia"] = -1
+                status["altura"] = -1
+
+        velocidade_atual = game_speed
 
         # Atualiza e desenha jogadores vivos
         for player in players:
@@ -343,5 +367,5 @@ def menu(death_count):
             if event.type == pygame.KEYDOWN:
                 main()
 
-
-menu(death_count=0)
+if __name__ == "__main__":
+    menu(death_count=0)
