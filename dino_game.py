@@ -100,8 +100,8 @@ class Dinosaur:
     def jump(self):
         self.image = self.jump_img
         if self.dino_jump:
-            self.dino_rect.y -= self.jump_vel * 1  # suavizado
-            self.jump_vel -= 0.4  # gravidade suavizada
+            self.dino_rect.y -= self.jump_vel * 1
+            self.jump_vel -= 0.4
         if self.jump_vel < - self.JUMP_VEL:
             self.dino_jump = False
             self.jump_vel = self.JUMP_VEL
@@ -177,7 +177,7 @@ def main(jump_key, duck_key):
     clock = pygame.time.Clock()
     player = Dinosaur()
     cloud = Cloud()
-    game_speed = 5  # velocidade inicial ajustada
+    game_speed = 8  # Velocidade inicial
     x_pos_bg = 0
     y_pos_bg = 190
     points = 0
@@ -188,8 +188,8 @@ def main(jump_key, duck_key):
     def score():
         global points, game_speed
         points += 1
-        if points % 100 == 0:
-            game_speed += 0.5  # incremento suave
+        if points % 100 == 0 and game_speed < 20:
+            game_speed += 0.5
 
         text = font.render("Points: " + str(points), True, (0, 0, 0))
         textRect = text.get_rect()
