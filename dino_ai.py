@@ -18,12 +18,19 @@ def iniciar_jogo():
     threading.Thread(target=pressionar_espaco).start()
 
 def atualizar_info():
-    for i in range(4):
-        status = dino_game.dino_status[i]
-        texto = f"Dino {i+1} - Distância: {status['distancia']}  Altura: {status['altura']}"
-        labels_dino[i].config(text=texto)
+    if hasattr(dino_game, "players"):
+        for i in range(4):
+            status = dino_game.dino_status[i]
+            vivo = "Vivo" if dino_game.players[i].alive else "Morto"
+            texto = f"Dino {i+1} - Distância: {status['distancia']}  Altura: {status['altura']}  Status: {vivo}"
+            labels_dino[i].config(text=texto)
 
-    label_velocidade.config(text=f"Velocidade: {dino_game.velocidade_atual}")
+        label_velocidade.config(text=f"Velocidade: {dino_game.velocidade_atual}")
+    else:
+        for i in range(4):
+            texto = f"Dino {i+1} - Distância: -  Altura: -  Status: -"
+            labels_dino[i].config(text=texto)
+        label_velocidade.config(text="Velocidade: -")
 
     janela.after(500, atualizar_info)  # atualiza a cada 500ms
 
@@ -39,7 +46,7 @@ botao_iniciar.pack(pady=10)
 # Labels dos Dinos
 labels_dino = []
 for i in range(4):
-    lbl = tk.Label(janela, text=f"Dino {i+1} - Distância: -  Altura: -", font=("Arial", 12))
+    lbl = tk.Label(janela, text=f"Dino {i+1} - Distância: -  Altura: -  Status: -", font=("Arial", 12))
     lbl.pack()
     labels_dino.append(lbl)
 

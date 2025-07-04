@@ -33,6 +33,8 @@ class Dinosaur:
     JUMP_VEL = 8.5
 
     def __init__(self, key_up, key_down, run_img, duck_img, jump_img, x_pos, y_pos, y_pos_duck):
+
+        
         self.duck_img = duck_img
         self.run_img = run_img
         self.jump_img = jump_img
@@ -174,7 +176,7 @@ class Bird(Obstacle):
 
 
 def main():
-    global game_speed, x_pos_bg, y_pos_bg, points, obstacles, velocidade_atual
+    global game_speed, x_pos_bg, y_pos_bg, points, obstacles, players, velocidade_atual
 
     run = True
     clock = pygame.time.Clock()
@@ -283,18 +285,24 @@ def main():
             else:
                 obstacles.append(Bird(BIRD))
 
-        # Atualiza e desenha obstáculos, verifica colisão com jogadores vivos
+
         for obstacle in obstacles[:]:
             obstacle.update()
             obstacle.draw(SCREEN)
 
             for player in players:
                 if player.alive and player.dino_rect.colliderect(obstacle.rect):
-                    player.alive = False  # dinossauro morreu
+                    player.alive = False
 
             if obstacle.rect.x < -obstacle.rect.width:
                 obstacles.remove(obstacle)
-        
+
+        # Verifica se todos morreram
+        if all(not player.alive for player in players):
+            pygame.time.delay(2000)
+            death_count += 1
+            menu(death_count)
+
         # Atualiza as variáveis globais de status
         if obstacles:
             obstaculo = obstacles[0]
