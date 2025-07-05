@@ -8,9 +8,9 @@ import math
 
 jogo_rodando = False
 ciclo_automatico = True  # Controla se o jogo reinicia sozinho
-pesos_ia = {}  # Dicionário global que armazena os pesos de cada dino
-ultimo_vivo = None
-mensagem_vencedor_exibida = False
+pesos_ia = {}  # dicionário global que armazena os pesos de cada dino
+melhor_pontuacao = 0  # Guarda a maior velocidade já atingida
+
 
 def carregar_pesos():
     global pesos_ia
@@ -25,47 +25,45 @@ def carregar_pesos():
         for idx, linha in enumerate(f.readlines()):
             numeros = [float(x) for x in linha.strip().split()]
             pesos_ia[idx] = numeros
-            print(f"Pesos Dino {idx}: {pesos_ia[idx]}")
 
-def salvar_pesos():
+
+def salvar_pesos(pesos_vencedor):
     with open("pesos_sinapticos.txt", "w") as f:
         for idx in range(4):
-            linha = " ".join([str(round(p, 2)) for p in pesos_ia[idx]])
+            if idx == 0:
+                linha = " ".join([str(round(p, 2)) for p in pesos_vencedor])
+            else:
+                novos_pesos = mutar_pesos(pesos_vencedor)
+                linha = " ".join([str(round(p, 2)) for p in novos_pesos])
             f.write(linha + "\n")
+
 
 def mutar_pesos(pesos):
     novos_pesos = []
     for p in pesos:
-        mutacao = round(random.uniform(-2, 2), 2)
+        mutacao = round(random.uniform(-12, 12), 2)
         novos_pesos.append(p + mutacao)
     return novos_pesos
 
+
 def decidir_acao(numero_dino, altura, distancia, velocidade):
     pesos = pesos_ia[numero_dino]
-
-    soma = (
-        altura * pesos[0] +
-        distancia * pesos[1] +
-        velocidade * pesos[2] +
-        pesos[3]  # Bias escondido
-    )
-
-    soma = max(0, soma)  # Ativação ReLU
-
+    soma = altura * pesos[0] + distancia * pesos[1] + velocidade * pesos[2] + pesos[3]
+    soma = max(0, soma)
     saida = soma * pesos[4]
 
     if saida < -0.33:
-        return -1  # Abaixar
+        return -1
     elif saida > 0.33:
-        return 1   # Pular
+        return 1
     else:
-        return 0   # Fazer nada
+        return 0
+
 
 def iniciar_jogo():
     global jogo_rodando, ultimo_vivo, mensagem_vencedor_exibida
 
     if jogo_rodando:
-        print("O jogo já está rodando.")
         return
 
     jogo_rodando = True
@@ -77,17 +75,27 @@ def iniciar_jogo():
     def rodar_jogo():
         time.sleep(1)
         dino_game.start_game()
-        global jogo_rodando
+        global jogo_rodando, melhor_pontuacao
         jogo_rodando = False
 
+        if ultimo_vivo is not None:
+            pontuacao = dino_game.velocidade_atual
+            if pontuacao > melhor_pontuacao:
+                melhor_pontuacao = pontuacao
+                salvar_pesos(pesos_ia[ultimo_vivo])
+                print(f"Novo melhor desempenho: Velocidade {pontuacao}")
+            else:
+                print(f"Desempenho {pontuacao} não superou o melhor {melhor_pontuacao}")
+                carregar_pesos()
+
         if ciclo_automatico:
-            time.sleep(6)
-            janela.after(0, resetar_vencedor)
-            janela.after(0, iniciar_jogo)
+            time.sleep(2)
+            iniciar_jogo()
         else:
-            janela.after(0, botao_iniciar.config, {"state": tk.NORMAL})
+            botao_iniciar.config(state=tk.NORMAL)
 
     threading.Thread(target=rodar_jogo).start()
+
 
 def atualizar_info():
     global ultimo_vivo, mensagem_vencedor_exibida
@@ -131,32 +139,15 @@ def atualizar_info():
         label_vencedor.config(text=f"Dino {ultimo_vivo + 1} venceu!")
         mensagem_vencedor_exibida = True
 
-        # Atualiza pesos dos dinos
-        pesos_vencedor = pesos_ia[ultimo_vivo]
-        for i in range(4):
-            if i == ultimo_vivo:
-                pesos_ia[i] = pesos_vencedor
-            else:
-                pesos_ia[i] = mutar_pesos(pesos_vencedor)
-
-        salvar_pesos()
-        print("Pesos atualizados e salvos.")
-        print(pesos_ia)
-
     janela.after(200, atualizar_info)
 
-def resetar_vencedor(event=None):
-    global ultimo_vivo, mensagem_vencedor_exibida
-    label_vencedor.config(text="")
-    ultimo_vivo = None
-    mensagem_vencedor_exibida = False
 
 def parar_ciclo():
     global ciclo_automatico
     ciclo_automatico = False
     botao_iniciar.config(state=tk.NORMAL)
 
-# Interface Tkinter
+# Interface
 janela = tk.Tk()
 janela.title("Controle IA - Dino Game")
 janela.geometry("400x400")
@@ -179,7 +170,8 @@ label_velocidade.pack(pady=10)
 label_vencedor = tk.Label(janela, text="", font=("Arial", 14), fg="green")
 label_vencedor.pack(pady=10)
 
+ultimo_vivo = None
+mensagem_vencedor_exibida = False
 carregar_pesos()
 atualizar_info()
-janela.bind("<Key>", resetar_vencedor)
 janela.mainloop()
