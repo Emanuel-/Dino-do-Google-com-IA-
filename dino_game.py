@@ -3,6 +3,8 @@ import os
 import random
 pygame.init()
 
+
+
 # Global Constants
 SCREEN_HEIGHT = 600
 SCREEN_WIDTH = 1350
@@ -10,10 +12,10 @@ SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 
 # Variáveis globais de status do jogo
-dino_status = [
-    {"distancia": 0, "altura": 0} for _ in range(4)
-]
+players = []
+dino_status = [{"distancia": -1, "altura": -1} for _ in range(4)]
 velocidade_atual = 0
+ultimo_vivo = None
 
 
 SMALL_CACTUS = [pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus1.png")),
@@ -174,18 +176,11 @@ class Bird(Obstacle):
         SCREEN.blit(self.image[self.index // 5], self.rect)
         self.index += 1
 
-
 def main():
-    global game_speed, x_pos_bg, y_pos_bg, points, obstacles, players, velocidade_atual
+    global game_speed, dino_status, x_pos_bg, y_pos_bg, points, obstacles, players, velocidade_atual, ultimo_vivo
 
     run = True
     clock = pygame.time.Clock()
-
-    
-
-    ####################################################################################################
-    # Tamanho desejado para as imagens
-    # WIDTH, HEIGHT = 60, 80  # ajuste conforme preferir
 
     RUNNING1 = [
         pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Run1.png")), (87, 94)),
@@ -226,9 +221,6 @@ def main():
         pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Duck2.png")), (118, 60))
     ]
 
-    ####################################################################################################
-
-    # Cria 4 dinossauros com controles diferentes e posições diferentes no eixo X
     players = [
         Dinosaur(pygame.K_q, pygame.K_a, RUNNING1, DUCKING1, JUMPING1, 50, 310, 340),
         Dinosaur(pygame.K_w, pygame.K_s, RUNNING2, DUCKING2, JUMPING2, 150, 310, 340),
@@ -243,7 +235,6 @@ def main():
     points = 0
     font = pygame.font.Font('freesansbold.ttf', 20)
     obstacles = []
-    death_count = 0
 
     def score():
         global points, game_speed
@@ -256,26 +247,24 @@ def main():
         textRect.center = (1000, 40)
         SCREEN.blit(text, textRect)
 
-
     def background():
         global x_pos_bg, y_pos_bg
         image_width = BG.get_width()
         SCREEN.blit(BG, (x_pos_bg, y_pos_bg))
         SCREEN.blit(BG, (image_width + x_pos_bg, y_pos_bg))
         if x_pos_bg <= -image_width:
-            SCREEN.blit(BG, (image_width + x_pos_bg, y_pos_bg))
             x_pos_bg = 0
         x_pos_bg -= game_speed
 
     while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                run = False
+                pygame.quit()
+                return
 
         SCREEN.fill((255, 255, 255))
         userInput = pygame.key.get_pressed()
 
-        # Se não tiver obstáculos, cria um novo
         if len(obstacles) == 0:
             choice = random.randint(0, 2)
             if choice == 0:
@@ -284,7 +273,6 @@ def main():
                 obstacles.append(LargeCactus(LARGE_CACTUS))
             else:
                 obstacles.append(Bird(BIRD))
-
 
         for obstacle in obstacles[:]:
             obstacle.update()
@@ -297,13 +285,7 @@ def main():
             if obstacle.rect.x < -obstacle.rect.width:
                 obstacles.remove(obstacle)
 
-        # Verifica se todos morreram
-        if all(not player.alive for player in players):
-            pygame.time.delay(2000)
-            death_count += 1
-            menu(death_count)
-
-        # Atualiza as variáveis globais de status
+        # Atualiza status global para o Tkinter
         if obstacles:
             obstaculo = obstacles[0]
             altura = obstaculo.rect.y
@@ -326,21 +308,18 @@ def main():
                 player.draw(SCREEN)
 
         background()
-
         cloud.draw(SCREEN)
         cloud.update()
-
         score()
 
-        # Se todos morreram, termina o jogo
+        # Encerra o loop se todos morrerem
         if all(not player.alive for player in players):
             pygame.time.delay(2000)
-            death_count += 1
-            menu(death_count)
-            run = False  # para sair do loop main e voltar ao menu
+            return  # Sai do main e volta para o start_game()
 
         clock.tick(30)
         pygame.display.update()
+
 
 
 
