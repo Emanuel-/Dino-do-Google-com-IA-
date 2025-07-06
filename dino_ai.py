@@ -10,6 +10,12 @@ jogo_rodando = False
 ciclo_automatico = True  # Controla se o jogo reinicia sozinho
 pesos_ia = {}  # dicionário global que armazena os pesos de cada dino
 melhor_pontuacao = 0  # Guarda a maior velocidade já atingida
+tempo_abaixado = {
+    0: 0,
+    1: 0,
+    2: 0,
+    3: 0
+}
 
 
 def carregar_pesos():
@@ -41,7 +47,7 @@ def salvar_pesos(pesos_vencedor):
 def mutar_pesos(pesos):
     novos_pesos = []
     for p in pesos:
-        mutacao = round(random.uniform(-12, 12), 2)
+        mutacao = round(random.uniform(-1, 1), 3)
         novos_pesos.append(p + mutacao)
     return novos_pesos
 
@@ -52,10 +58,11 @@ def decidir_acao(numero_dino, altura, distancia, velocidade):
     soma = max(0, soma)
     saida = soma * pesos[4]
 
+    
     if saida < -0.33:
-        return -1
-    elif saida > 0.33:
         return 1
+    elif saida > 0.33:
+        return -1
     else:
         return 0
 
@@ -113,6 +120,15 @@ def atualizar_info():
 
         if dino_game.players[i].alive:
             vivos.append(i)
+
+            # Se ainda está no tempo de abaixar, mantém abaixado
+            if tempo_abaixado[i] > 0:
+                tempo_abaixado[i] -= 1
+                dino_game.players[i].dino_duck = True
+                dino_game.players[i].dino_run = False
+                dino_game.players[i].dino_jump = False
+                continue  # Pula o resto do loop e não decide nova ação ainda
+
             acao = decidir_acao(i, status['altura'], status['distancia'], dino_game.velocidade_atual)
 
             if acao == 1 and not dino_game.players[i].dino_jump:
@@ -121,6 +137,9 @@ def atualizar_info():
                 dino_game.players[i].dino_jump = True
 
             elif acao == -1 and not dino_game.players[i].dino_jump:
+                tempo_abaixado[i] = int(30 - dino_game.velocidade_atual / 2)  # Tempo de abaixar ajustável
+                if tempo_abaixado[i] < 5:
+                    tempo_abaixado[i] = 5  # Limite mínimo para não zerar
                 dino_game.players[i].dino_duck = True
                 dino_game.players[i].dino_run = False
                 dino_game.players[i].dino_jump = False
@@ -140,6 +159,7 @@ def atualizar_info():
         mensagem_vencedor_exibida = True
 
     janela.after(200, atualizar_info)
+
 
 
 def parar_ciclo():
