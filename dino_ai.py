@@ -4,108 +4,110 @@ import time
 import random
 import dino_game
 import os
+import math
+
 
 jogo_rodando = False
-ciclo_automatico = True
-pesos_ia = {}
-melhor_pontuacao = 0
-melhor_pesos = None
-ultimo_pesos = None
-tempo_abaixado = {0: 0, 1: 0, 2: 0, 3: 0}
+ciclo_automatico = True  # Controla se o jogo reinicia sozinho
+pesos_ia = {}  # dicionário global que armazena os pesos de cada dino
+melhor_pontuacao = 0  # Guarda a maior velocidade já atingida
+tempo_abaixado = {
+    0: 0,
+    1: 0,
+    2: 0,
+    3: 0
+}
 
 
 def carregar_pesos():
-    global melhor_pesos, pesos_ia
+    global pesos_ia
     if not os.path.exists("pesos_sinapticos.txt"):
         with open("pesos_sinapticos.txt", "w") as f:
-            linha = " ".join([str(round(random.uniform(-2, 2), 2)) for _ in range(5)])
-            f.write(linha + "\n")
-        melhor_pesos = [random.uniform(-2, 2) for _ in range(5)]
-    else:
-        with open("pesos_sinapticos.txt", "r") as f:
-            linha = f.readline().strip()
-            melhor_pesos = [float(x) for x in linha.split()]
+            for _ in range(4):
+                linha = " ".join([str(round(random.uniform(-2, 2), 2)) for _ in range(23)])
+                f.write(linha + "\n")
 
-    atualizar_pesos()
-
-
-def atualizar_pesos():
-    global pesos_ia
     pesos_ia = {}
-    # Melhor histórico
-    pesos_ia[0] = melhor_pesos.copy()
-    pesos_ia[1] = mutar_pesos(melhor_pesos)
-
-    # Último vencedor
-    if ultimo_pesos:
-        pesos_ia[2] = ultimo_pesos.copy()
-        pesos_ia[3] = mutar_pesos(ultimo_pesos)
-    else:
-        pesos_ia[2] = [random.uniform(-2, 2) for _ in range(5)]
-        pesos_ia[3] = [random.uniform(-2, 2) for _ in range(5)]
+    with open("pesos_sinapticos.txt", "r") as f:
+        for idx, linha in enumerate(f.readlines()):
+            numeros = [float(x) for x in linha.strip().split()]
+            if len(numeros) != 23:
+                raise ValueError(f"Esperado 23 pesos por dino, mas encontrei {len(numeros)} na linha {idx+1}")
+            pesos_ia[idx] = numeros
 
 
-def salvar_melhor_pesos(pesos):
+
+def salvar_pesos(pesos_vencedor):
     with open("pesos_sinapticos.txt", "w") as f:
-        linha = " ".join([str(round(p, 2)) for p in pesos])
-        f.write(linha + "\n")
+        for idx in range(4):
+            if idx == 0:
+                linha = " ".join([str(round(p, 2)) for p in pesos_vencedor])
+            else:
+                novos_pesos = mutar_pesos(pesos_vencedor)
+                linha = " ".join([str(round(p, 2)) for p in novos_pesos])
+            f.write(linha + "\n")
 
 
 def mutar_pesos(pesos):
-    return [p + round(random.uniform(-1, 1), 3) for p in pesos]
+    novos_pesos = []
+    for p in pesos:
+        mutacao = round(random.uniform(-2, 2), 3)
+        novos_pesos.append(p + mutacao)
+    return novos_pesos
 
-'''
+
+
+import math
+
+import math
+
+def sigmoid(x):
+    # Limita o valor de x para evitar overflow
+    if x < -700:
+        x = -700
+    elif x > 700:
+        x = 700
+    return 1 / (1 + math.exp(-x))
+
+
+def relu(x):
+    return max(0, x)
+
 def decidir_acao(numero_dino, altura, distancia, velocidade):
     pesos = pesos_ia[numero_dino]
-    soma = altura * pesos[0] + distancia * pesos[1] + velocidade * pesos[2] + pesos[3]
-    soma = max(0, soma)
-    saida = soma * pesos[4]
 
-    if saida < -0.33:
-        return 1
-    elif saida > 0.33:
-        return -1
-    else:
-        return 0
-
-'''
-
-def decidir_acao(numero_dino, altura, distancia, velocidade):
-    pesos = pesos_ia[numero_dino]  # Deve conter todos os pesos do MLP
-
-    # Pesos por estrutura:
-    # 3 entradas -> 3 neurônios (3x4 pesos = 12) + bias por neurônio = 15
-    # 3 neurônios -> 2 neurônios (3x2 pesos = 6) + bias por neurônio = 8
-    # 2 neurônios -> 1 saída (2 pesos) + bias = 3
-    # Total: 15 + 8 + 3 = **26 pesos por dino**
-
-    # Entradas normalizadas
+    # ------------------------------
+    # Primeira camada oculta (3 neurônios)
     entradas = [altura, distancia, velocidade]
-
-    # Camada 1 (3 neurônios)
-    saida_c1 = []
+    hidden1 = []
     for i in range(3):
-        soma = sum(entradas[j] * pesos[i * 4 + j] for j in range(3)) + pesos[i * 4 + 3]  # Bias
-        ativacao = max(0, soma)  # ReLU
-        saida_c1.append(ativacao)
+        soma = sum(entradas[j] * pesos[i * 4 + j] for j in range(3)) + pesos[i * 4 + 3]
+        hidden1.append(relu(soma))
 
-    # Camada 2 (2 neurônios)
-    saida_c2 = []
+    # ------------------------------
+    # Segunda camada oculta (2 neurônios)
+    hidden2 = []
+    offset = 12
     for i in range(2):
-        soma = sum(saida_c1[j] * pesos[15 + i * 3 + j] for j in range(3)) + pesos[15 + i * 3 + 2]  # Bias
-        ativacao = max(0, soma)  # ReLU
-        saida_c2.append(ativacao)
+        soma = sum(hidden1[j] * pesos[offset + i * 4 + j] for j in range(3)) + pesos[offset + i * 4 + 3]
+        hidden2.append(relu(soma))
 
-    # Saída final
-    soma_final = saida_c2[0] * pesos[23] + saida_c2[1] * pesos[24] + pesos[25]  # Bias final
-    saida = soma_final  # Aqui poderia aplicar outra função, mas você já faz saída linear
+    # ------------------------------
+    # Camada de saída
+    offset = 20
+    soma_saida = sum(hidden2[j] * pesos[offset + j] for j in range(2)) + pesos[offset + 2]
+    saida = sigmoid(soma_saida)
 
-    if saida < -0.33:
-        return 1  # Pular
-    elif saida > 0.33:
-        return -1  # Abaixar
+    # ------------------------------
+    # Regra de decisão final
+    if saida < 0.33:
+        return -1  # abaixar
+    elif saida > 0.66:
+        return 1   # pular
     else:
-        return 0  # Nada
+        return 0   # correr normal
+
+
 
 def iniciar_jogo():
     global jogo_rodando, ultimo_vivo, mensagem_vencedor_exibida
@@ -120,26 +122,21 @@ def iniciar_jogo():
     botao_iniciar.config(state=tk.DISABLED)
 
     def rodar_jogo():
-        global jogo_rodando, melhor_pontuacao, melhor_pesos, ultimo_pesos
-
         time.sleep(1)
-        dino_game.start_game()
+        dino_game.start_game(modo_ia_param=True)
+
+        global jogo_rodando, melhor_pontuacao
         jogo_rodando = False
 
         if ultimo_vivo is not None:
             pontuacao = dino_game.velocidade_atual
-            vencedor_pesos = pesos_ia[ultimo_vivo]
-            ultimo_pesos = vencedor_pesos.copy()
-
             if pontuacao > melhor_pontuacao:
                 melhor_pontuacao = pontuacao
-                melhor_pesos = vencedor_pesos.copy()
-                salvar_melhor_pesos(melhor_pesos)
+                salvar_pesos(pesos_ia[ultimo_vivo])
                 print(f"Novo melhor desempenho: Velocidade {pontuacao}")
             else:
                 print(f"Desempenho {pontuacao} não superou o melhor {melhor_pontuacao}")
-
-        atualizar_pesos()
+                carregar_pesos()
 
         if ciclo_automatico:
             time.sleep(2)
@@ -161,17 +158,19 @@ def atualizar_info():
     for i in range(4):
         status = dino_game.dino_status[i]
         vivo = "Vivo" if dino_game.players[i].alive else "Morto"
-        labels_dino[i].config(text=f"Dino {i+1} - Distância: {status['distancia']}  Altura: {status['altura']}  Status: {vivo}")
+        texto = f"Dino {i+1} - Distância: {status['distancia']}  Altura: {status['altura']}  Status: {vivo}"
+        labels_dino[i].config(text=texto)
 
         if dino_game.players[i].alive:
             vivos.append(i)
 
+            # Se ainda está no tempo de abaixar, mantém abaixado
             if tempo_abaixado[i] > 0:
                 tempo_abaixado[i] -= 1
                 dino_game.players[i].dino_duck = True
                 dino_game.players[i].dino_run = False
                 dino_game.players[i].dino_jump = False
-                continue
+                continue  # Pula o resto do loop e não decide nova ação ainda
 
             acao = decidir_acao(i, status['altura'], status['distancia'], dino_game.velocidade_atual)
 
@@ -179,11 +178,13 @@ def atualizar_info():
                 dino_game.players[i].dino_duck = False
                 dino_game.players[i].dino_run = False
                 dino_game.players[i].dino_jump = True
+
             elif acao == -1 and not dino_game.players[i].dino_jump:
-                tempo_abaixado[i] = max(5, int(30 - dino_game.velocidade_atual / 2))
+                tempo_abaixado[i] = 5  # Dino ficará abaixado por 5 ciclos de atualização (~1 segundo)
                 dino_game.players[i].dino_duck = True
                 dino_game.players[i].dino_run = False
                 dino_game.players[i].dino_jump = False
+
             elif acao == 0 and not dino_game.players[i].dino_jump:
                 dino_game.players[i].dino_duck = False
                 dino_game.players[i].dino_run = True
@@ -201,11 +202,11 @@ def atualizar_info():
     janela.after(200, atualizar_info)
 
 
+
 def parar_ciclo():
     global ciclo_automatico
     ciclo_automatico = False
     botao_iniciar.config(state=tk.NORMAL)
-
 
 # Interface
 janela = tk.Tk()

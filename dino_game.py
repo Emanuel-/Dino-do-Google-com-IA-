@@ -17,6 +17,9 @@ dino_status = [{"distancia": -1, "altura": -1} for _ in range(4)]
 velocidade_atual = 0
 ultimo_vivo = None
 
+modo_ia = False  # Quando True, o teclado não interfere nos Dinos
+
+
 
 SMALL_CACTUS = [pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus1.png")),
                 pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus2.png")),
@@ -61,32 +64,48 @@ class Dinosaur:
 
         self.alive = True  # novo atributo para controlar se o dinossauro está vivo
 
+        self.tempo_abaixado_ia = 0  # Novo atributo para controlar o tempo abaixado no modo IA
+
+        # Adicionar nova variável de controle
+        self.pode_pular = True  # Controla quando um novo pulo é permitido
+
+
     def update(self, userInput):
         if not self.alive:
-            return  # não atualiza se estiver "morto"
+            return
 
-        if self.dino_duck:
-            self.duck()
-        elif self.dino_run:
-            self.run()
-        elif self.dino_jump:
-            self.jump()
+        global modo_ia
 
-        if self.step_index >= 10:
-            self.step_index = 0
-
-        if userInput[self.key_up] and not self.dino_jump:
-            self.dino_duck = False
-            self.dino_run = False
-            self.dino_jump = True
-        elif userInput[self.key_down] and not self.dino_jump:
+        if modo_ia and self.tempo_abaixado_ia > 0:
             self.dino_duck = True
             self.dino_run = False
             self.dino_jump = False
-        elif not (self.dino_jump or userInput[self.key_down]):
-            self.dino_duck = False
-            self.dino_run = True
-            self.dino_jump = False
+            self.tempo_abaixado_ia -= 1
+        else:
+            if self.dino_duck:
+                self.duck()
+            elif self.dino_run:
+                self.run()
+            elif self.dino_jump:
+                self.jump()
+
+            if self.step_index >= 10:
+                self.step_index = 0
+
+            if not modo_ia:  # Só interpreta teclado se não for IA
+                if userInput[self.key_up] and not self.dino_jump:
+                    self.dino_duck = False
+                    self.dino_run = False
+                    self.dino_jump = True
+                elif userInput[self.key_down] and not self.dino_jump:
+                    self.dino_duck = True
+                    self.dino_run = False
+                    self.dino_jump = False
+                elif not (self.dino_jump or userInput[self.key_down]):
+                    self.dino_duck = False
+                    self.dino_run = True
+                    self.dino_jump = False
+
 
     def duck(self):
         self.image = self.duck_img[self.step_index // 5]
@@ -110,6 +129,7 @@ class Dinosaur:
         if self.jump_vel < -self.JUMP_VEL:
             self.dino_jump = False
             self.jump_vel = self.JUMP_VEL
+            self.dino_rect.y = self.Y_POS  # <-- Corrige a posição Y ao final do pulo
 
     def draw(self, SCREEN):
         if not self.alive:
@@ -176,8 +196,10 @@ class Bird(Obstacle):
         SCREEN.blit(self.image[self.index // 5], self.rect)
         self.index += 1
 
-def main():
-    global game_speed, dino_status, x_pos_bg, y_pos_bg, points, obstacles, players, velocidade_atual, ultimo_vivo
+def main(modo_ia_param=False):
+    global game_speed, dino_status, x_pos_bg, y_pos_bg, points, obstacles, players, velocidade_atual, ultimo_vivo, modo_ia
+    
+    modo_ia = modo_ia_param
 
     run = True
     clock = pygame.time.Clock()
@@ -302,6 +324,11 @@ def main():
         velocidade_atual = game_speed
 
         # Atualiza e desenha jogadores vivos
+        if modo_ia:
+            userInput = [False] * 512  # Array de teclas "falsas"
+        else:
+            userInput = pygame.key.get_pressed()
+
         for player in players:
             if player.alive:
                 player.update(userInput)
@@ -354,8 +381,8 @@ def menu(death_count):
             if event.type == pygame.KEYDOWN:
                 start_game()
 
-def start_game():
-    main()
+def start_game(modo_ia_param=False):
+    main(modo_ia_param)
 
 
 if __name__ == "__main__":
