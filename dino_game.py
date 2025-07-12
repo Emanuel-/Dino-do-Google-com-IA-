@@ -187,7 +187,8 @@ class Bird(Obstacle):
     def __init__(self, image):
         self.type = 0
         super().__init__(image, self.type)
-        self.rect.y = 250
+        alturas = [200, 250, 320]
+        self.rect.y = random.choice(alturas)
         self.index = 0
 
     def draw(self, SCREEN):
@@ -200,6 +201,8 @@ def main(modo_ia_param=False):
     global game_speed, dino_status, x_pos_bg, y_pos_bg, points, obstacles, players, velocidade_atual, ultimo_vivo, modo_ia
     
     modo_ia = modo_ia_param
+    proxima_geracao_obstaculo = 0
+
 
     run = True
     clock = pygame.time.Clock()
@@ -287,14 +290,21 @@ def main(modo_ia_param=False):
         SCREEN.fill((255, 255, 255))
         userInput = pygame.key.get_pressed()
 
-        if len(obstacles) == 0:
-            choice = random.randint(0, 2)
-            if choice == 0:
-                obstacles.append(SmallCactus(SMALL_CACTUS))
-            elif choice == 1:
-                obstacles.append(LargeCactus(LARGE_CACTUS))
-            else:
-                obstacles.append(Bird(BIRD))
+        if proxima_geracao_obstaculo <= 0:
+            if len(obstacles) == 0 or obstacles[-1].rect.x < 600:
+                choice = random.randint(0, 2)
+                if choice == 0:
+                    obstacles.append(SmallCactus(SMALL_CACTUS))
+                elif choice == 1:
+                    obstacles.append(LargeCactus(LARGE_CACTUS))
+                else:
+                    obstacles.append(Bird(BIRD))
+
+                # Define tempo aleatório até o próximo obstáculo (em frames)
+                proxima_geracao_obstaculo = random.randint(30, 50)  # entre 1s e 3s
+        else:
+            proxima_geracao_obstaculo -= 1
+
 
         for obstacle in obstacles[:]:
             obstacle.update()
