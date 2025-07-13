@@ -1,279 +1,80 @@
 import pygame
 import os
 import random
+from dino_classes import Dinosaur, SmallCactus, LargeCactus, Bird, Cloud, SMALL_CACTUS, LARGE_CACTUS, BIRD
+
 pygame.init()
 
-
-
-# Global Constants
+# Constantes da tela
 SCREEN_HEIGHT = 600
 SCREEN_WIDTH = 1350
 SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Dino Game")
 
+# Imagem de fundo
+BG = pygame.image.load(os.path.join("Assets/Other", "Track.png"))
 
-# Variáveis globais de status do jogo
+# Variáveis globais
 players = []
 dino_status = [{"distancia": -1, "altura": -1} for _ in range(4)]
 velocidade_atual = 0
 ultimo_vivo = None
-
-modo_ia = False  # Quando True, o teclado não interfere nos Dinos
-
-
-
-SMALL_CACTUS = [pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus1.png")),
-                pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus2.png")),
-                pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus3.png"))]
-LARGE_CACTUS = [pygame.image.load(os.path.join("Assets/Cactus", "LargeCactus1.png")),
-                pygame.image.load(os.path.join("Assets/Cactus", "LargeCactus2.png")),
-                pygame.image.load(os.path.join("Assets/Cactus", "LargeCactus3.png"))]
-
-BIRD = [pygame.image.load(os.path.join("Assets/Bird", "Bird1.png")),
-        pygame.image.load(os.path.join("Assets/Bird", "Bird2.png"))]
-
-CLOUD = pygame.image.load(os.path.join("Assets/Other", "Cloud.png"))
-BG = pygame.image.load(os.path.join("Assets/Other", "Track.png"))
-
-class Dinosaur:
-    JUMP_VEL = 8.5
-
-    def __init__(self, key_up, key_down, run_img, duck_img, jump_img, x_pos, y_pos, y_pos_duck):
-
-        
-        self.duck_img = duck_img
-        self.run_img = run_img
-        self.jump_img = jump_img
-
-        self.key_up = key_up
-        self.key_down = key_down
-
-        self.X_POS = x_pos
-        self.Y_POS = y_pos
-        self.Y_POS_DUCK = y_pos_duck
-
-        self.dino_duck = False
-        self.dino_run = True
-        self.dino_jump = False
-
-        self.step_index = 0
-        self.jump_vel = self.JUMP_VEL
-        self.image = self.run_img[0]
-        self.dino_rect = self.image.get_rect()
-        self.dino_rect.x = self.X_POS
-        self.dino_rect.y = self.Y_POS
-
-        self.alive = True  # novo atributo para controlar se o dinossauro está vivo
-
-        self.tempo_abaixado_ia = 0  # Novo atributo para controlar o tempo abaixado no modo IA
-
-        # Adicionar nova variável de controle
-        self.pode_pular = True  # Controla quando um novo pulo é permitido
+modo_ia = False
+points = 0
 
 
-    def update(self, userInput):
-        if not self.alive:
-            return
-
-        global modo_ia
-
-        if modo_ia and self.tempo_abaixado_ia > 0:
-            self.dino_duck = True
-            self.dino_run = False
-            self.dino_jump = False
-            self.tempo_abaixado_ia -= 1
-        else:
-            if self.dino_duck:
-                self.duck()
-            elif self.dino_run:
-                self.run()
-            elif self.dino_jump:
-                self.jump()
-
-            if self.step_index >= 10:
-                self.step_index = 0
-
-            if not modo_ia:  # Só interpreta teclado se não for IA
-                if userInput[self.key_up] and not self.dino_jump:
-                    self.dino_duck = False
-                    self.dino_run = False
-                    self.dino_jump = True
-                elif userInput[self.key_down] and not self.dino_jump:
-                    self.dino_duck = True
-                    self.dino_run = False
-                    self.dino_jump = False
-                elif not (self.dino_jump or userInput[self.key_down]):
-                    self.dino_duck = False
-                    self.dino_run = True
-                    self.dino_jump = False
-
-
-    def duck(self):
-        self.image = self.duck_img[self.step_index // 5]
-        self.dino_rect = self.image.get_rect()
-        self.dino_rect.x = self.X_POS
-        self.dino_rect.y = self.Y_POS_DUCK
-        self.step_index += 1
-
-    def run(self):
-        self.image = self.run_img[self.step_index // 5]
-        self.dino_rect = self.image.get_rect()
-        self.dino_rect.x = self.X_POS
-        self.dino_rect.y = self.Y_POS
-        self.step_index += 1
-
-    def jump(self):
-        self.image = self.jump_img
-        if self.dino_jump:
-            self.dino_rect.y -= self.jump_vel * 4
-            self.jump_vel -= 0.8
-        if self.jump_vel < -self.JUMP_VEL:
-            self.dino_jump = False
-            self.jump_vel = self.JUMP_VEL
-            self.dino_rect.y = self.Y_POS  # <-- Corrige a posição Y ao final do pulo
-
-    def draw(self, SCREEN):
-        if not self.alive:
-            return  # não desenha se estiver "morto"
-        SCREEN.blit(self.image, (self.dino_rect.x, self.dino_rect.y))
-
-
-
-class Cloud:
-    def __init__(self):
-        self.x = SCREEN_WIDTH + random.randint(800, 1000)
-        self.y = random.randint(50, 100)
-        self.image = CLOUD
-        self.width = self.image.get_width()
-
-    def update(self):
-        self.x -= game_speed
-        if self.x < -self.width:
-            self.x = SCREEN_WIDTH + random.randint(2500, 3000)
-            self.y = random.randint(50, 100)
-
-    def draw(self, SCREEN):
-        SCREEN.blit(self.image, (self.x, self.y))
-
-
-class Obstacle:
-    def __init__(self, image, type):
-        self.image = image
-        self.type = type
-        self.rect = self.image[self.type].get_rect()
-        self.rect.x = SCREEN_WIDTH
-
-    def update(self):
-        self.rect.x -= game_speed
-
-    def draw(self, SCREEN):
-        SCREEN.blit(self.image[self.type], self.rect)
-
-
-class SmallCactus(Obstacle):
-    def __init__(self, image):
-        self.type = random.randint(0, 2)
-        super().__init__(image, self.type)
-        self.rect.y = 325
-
-
-class LargeCactus(Obstacle):
-    def __init__(self, image):
-        self.type = random.randint(0, 2)
-        super().__init__(image, self.type)
-        self.rect.y = 300
-
-
-class Bird(Obstacle):
-    def __init__(self, image):
-        self.type = 0
-        super().__init__(image, self.type)
-        alturas = [200, 250, 320]
-        self.rect.y = random.choice(alturas)
-        self.index = 0
-
-    def draw(self, SCREEN):
-        if self.index >= 9:
-            self.index = 0
-        SCREEN.blit(self.image[self.index // 5], self.rect)
-        self.index += 1
 
 def main(modo_ia_param=False):
-    global game_speed, dino_status, x_pos_bg, y_pos_bg, points, obstacles, players, velocidade_atual, ultimo_vivo, modo_ia
-    
+    global players, dino_status, velocidade_atual, modo_ia, points
+
     modo_ia = modo_ia_param
-    proxima_geracao_obstaculo = 0
-
-
     run = True
     clock = pygame.time.Clock()
+    font = pygame.font.Font('freesansbold.ttf', 20)
 
-    RUNNING1 = [
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Run1.png")), (87, 94)),
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Run2.png")), (87, 94))
-    ]
-    RUNNING2 = [
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Run1.png")), (87, 94)),
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Run2.png")), (87, 94))
-    ]    
-    RUNNING3 = [
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Run1.png")), (87, 94)),
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Run2.png")), (87, 94))
-    ]
-    RUNNING4 = [
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Run1.png")), (87, 94)),
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Run2.png")), (87, 94))
-    ]    
+    # Carrega sprites dos Dinos
+    RUNNING = []
+    DUCKING = []
+    JUMPING = []
 
-    JUMPING1 = pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Jump.png")), (88, 94))
-    JUMPING2 = pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Jump.png")), (88, 94))
-    JUMPING3 = pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Jump.png")), (88, 94))
-    JUMPING4 = pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Jump.png")), (88, 94))
+    for i in range(1, 5):
+        RUNNING.append([
+            pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", f"Dino{i}Run1.png")), (87, 94)),
+            pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", f"Dino{i}Run2.png")), (87, 94))
+        ])
+        DUCKING.append([
+            pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", f"Dino{i}Duck1.png")), (118, 60)),
+            pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", f"Dino{i}Duck2.png")), (118, 60))
+        ])
+        JUMPING.append(pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", f"Dino{i}Jump.png")), (88, 94)))
 
-    DUCKING1 = [
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Duck1.png")), (118, 60)),
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino1Duck2.png")), (118, 60))
-    ]
-    DUCKING2 = [
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Duck1.png")), (118, 60)),
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino2Duck2.png")), (118, 60))
-    ]
-    DUCKING3 = [
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Duck1.png")), (118, 60)),
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino3Duck2.png")), (118, 60))
-    ]
-    DUCKING4 = [
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Duck1.png")), (118, 60)),
-        pygame.transform.scale(pygame.image.load(os.path.join("Assets/Dino", "Dino4Duck2.png")), (118, 60))
-    ]
-
+    # Criação dos jogadores
     players = [
-        Dinosaur(pygame.K_q, pygame.K_a, RUNNING1, DUCKING1, JUMPING1, 50, 310, 340),
-        Dinosaur(pygame.K_w, pygame.K_s, RUNNING2, DUCKING2, JUMPING2, 150, 310, 340),
-        Dinosaur(pygame.K_e, pygame.K_d, RUNNING3, DUCKING3, JUMPING3, 250, 310, 340),
-        Dinosaur(pygame.K_r, pygame.K_f, RUNNING4, DUCKING4, JUMPING4, 350, 310, 340),
+        Dinosaur(pygame.K_q, pygame.K_a, RUNNING[0], DUCKING[0], JUMPING[0], 50, 310, 340),
+        Dinosaur(pygame.K_w, pygame.K_s, RUNNING[1], DUCKING[1], JUMPING[1], 150, 310, 340),
+        Dinosaur(pygame.K_e, pygame.K_d, RUNNING[2], DUCKING[2], JUMPING[2], 250, 310, 340),
+        Dinosaur(pygame.K_r, pygame.K_f, RUNNING[3], DUCKING[3], JUMPING[3], 350, 310, 340),
     ]
 
-    cloud = Cloud()
     game_speed = 20
     x_pos_bg = 0
     y_pos_bg = 380
     points = 0
-    font = pygame.font.Font('freesansbold.ttf', 20)
     obstacles = []
+    cloud = Cloud(SCREEN_WIDTH)
+    proxima_geracao_obstaculo = 0
 
     def score():
-        global points, game_speed
+        global points 
+        nonlocal game_speed
         points += 1
         if points % 100 == 0:
-            game_speed = min(game_speed + 1, 60)  # limita a velocidade a no máximo 60
-
-        text = font.render("Points: " + str(points), True, (0, 0, 0))
-        textRect = text.get_rect()
-        textRect.center = (1000, 40)
-        SCREEN.blit(text, textRect)
+            game_speed = min(game_speed + 1, 60)
+        text = font.render(f"Points: {points}", True, (0, 0, 0))
+        SCREEN.blit(text, (1000, 40))
 
     def background():
-        global x_pos_bg, y_pos_bg
+        nonlocal x_pos_bg
         image_width = BG.get_width()
         SCREEN.blit(BG, (x_pos_bg, y_pos_bg))
         SCREEN.blit(BG, (image_width + x_pos_bg, y_pos_bg))
@@ -288,26 +89,25 @@ def main(modo_ia_param=False):
                 return
 
         SCREEN.fill((255, 255, 255))
-        userInput = pygame.key.get_pressed()
+        userInput = pygame.key.get_pressed() if not modo_ia else [False] * 512
 
+        # Geração de obstáculos
         if proxima_geracao_obstaculo <= 0:
             if len(obstacles) == 0 or obstacles[-1].rect.x < 600:
                 choice = random.randint(0, 2)
                 if choice == 0:
-                    obstacles.append(SmallCactus(SMALL_CACTUS))
+                    obstacles.append(SmallCactus(SMALL_CACTUS, SCREEN_WIDTH))
                 elif choice == 1:
-                    obstacles.append(LargeCactus(LARGE_CACTUS))
+                    obstacles.append(LargeCactus(LARGE_CACTUS, SCREEN_WIDTH))
                 else:
-                    obstacles.append(Bird(BIRD))
-
-                # Define tempo aleatório até o próximo obstáculo (em frames)
-                proxima_geracao_obstaculo = random.randint(30, 50)  # entre 1s e 3s
+                    obstacles.append(Bird(BIRD, SCREEN_WIDTH))
+                proxima_geracao_obstaculo = random.randint(30, 50)
         else:
             proxima_geracao_obstaculo -= 1
 
-
+        # Atualiza obstáculos
         for obstacle in obstacles[:]:
-            obstacle.update()
+            obstacle.update(game_speed)
             obstacle.draw(SCREEN)
 
             for player in players:
@@ -317,12 +117,11 @@ def main(modo_ia_param=False):
             if obstacle.rect.x < -obstacle.rect.width:
                 obstacles.remove(obstacle)
 
-        # Atualiza status global para o Tkinter
+        # Atualiza status para IA ou interface
         if obstacles:
             obstaculo = obstacles[0]
             altura = obstaculo.rect.y
             distancia = obstaculo.rect.x
-
             for idx, player in enumerate(players):
                 dino_status[idx]["distancia"] = distancia - player.dino_rect.x
                 dino_status[idx]["altura"] = altura
@@ -333,36 +132,27 @@ def main(modo_ia_param=False):
 
         velocidade_atual = game_speed
 
-        # Atualiza e desenha jogadores vivos
-        if modo_ia:
-            userInput = [False] * 512  # Array de teclas "falsas"
-        else:
-            userInput = pygame.key.get_pressed()
-
+        # Atualiza e desenha jogadores
         for player in players:
             if player.alive:
-                player.update(userInput)
+                player.update(userInput, modo_ia)
                 player.draw(SCREEN)
 
         background()
         cloud.draw(SCREEN)
-        cloud.update()
+        cloud.update(game_speed, SCREEN_WIDTH)
         score()
 
-        # Encerra o loop se todos morrerem
         if all(not player.alive for player in players):
             pygame.time.delay(2000)
-            return  # Sai do main e volta para o start_game()
+            return
 
         clock.tick(30)
         pygame.display.update()
 
 
-
-
-
 def menu(death_count):
-    global points
+    global modo_ia
     run = True
     while run:
         SCREEN.fill((255, 255, 255))
@@ -373,12 +163,10 @@ def menu(death_count):
         else:
             text = font.render("Press any Key to Restart", True, (0, 0, 0))
             score_text = font.render("Your Score: " + str(points), True, (0, 0, 0))
-            scoreRect = score_text.get_rect()
-            scoreRect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50)
+            scoreRect = score_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
             SCREEN.blit(score_text, scoreRect)
 
-        textRect = text.get_rect()
-        textRect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        textRect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
         SCREEN.blit(text, textRect)
         SCREEN.blit(pygame.image.load(os.path.join("Assets/Dino", "Dino1Run1.png")),
                     (SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 - 140))
@@ -390,6 +178,7 @@ def menu(death_count):
                 run = False
             if event.type == pygame.KEYDOWN:
                 start_game()
+
 
 def start_game(modo_ia_param=False):
     main(modo_ia_param)
