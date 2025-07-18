@@ -33,6 +33,7 @@ class Dinosaur:
         self.dino_rect = self.image.get_rect()
         self.dino_rect.x = self.X_POS
         self.dino_rect.y = self.Y_POS
+        self.pontos = 0
 
         self.alive = True
         self.tempo_abaixado_ia = 0

@@ -65,13 +65,21 @@ def main(modo_ia_param=False):
     proxima_geracao_obstaculo = 0
 
     def score():
-        global points 
-        nonlocal game_speed
+        nonlocal game_speed   # permite modificar a variável do escopo externo main()
+        global points
         points += 1
         if points % 100 == 0:
             game_speed = min(game_speed + 1, 60)
         text = font.render(f"Points: {points}", True, (0, 0, 0))
         SCREEN.blit(text, (1000, 40))
+
+        # Atualiza a pontuação individual dos dinos vivos
+        for player in players:
+            if player.alive:
+                player.pontos = int(points)
+
+
+
 
     def background():
         nonlocal x_pos_bg
@@ -91,17 +99,28 @@ def main(modo_ia_param=False):
         SCREEN.fill((255, 255, 255))
         userInput = pygame.key.get_pressed() if not modo_ia else [False] * 512
 
-        # Geração de obstáculos
+        # Geração de obstáculos               
         if proxima_geracao_obstaculo <= 0:
             if len(obstacles) == 0 or obstacles[-1].rect.x < 600:
                 choice = random.randint(0, 2)
                 if choice == 0:
-                    obstacles.append(SmallCactus(SMALL_CACTUS, SCREEN_WIDTH))
+                    obstaculo = SmallCactus(SMALL_CACTUS, SCREEN_WIDTH)
+                    obstaculo.tipo_unificado = 0 + obstaculo.type
                 elif choice == 1:
-                    obstacles.append(LargeCactus(LARGE_CACTUS, SCREEN_WIDTH))
+                    obstaculo = LargeCactus(LARGE_CACTUS, SCREEN_WIDTH)
+                    obstaculo.tipo_unificado = 3 if obstaculo.type == 0 else 4
                 else:
-                    obstacles.append(Bird(BIRD, SCREEN_WIDTH))
+                    obstaculo = Bird(BIRD, SCREEN_WIDTH)
+                    if obstaculo.rect.y <= 210:
+                        obstaculo.tipo_unificado = 5
+                    elif obstaculo.rect.y <= 270:
+                        obstaculo.tipo_unificado = 6
+                    else:
+                        obstaculo.tipo_unificado = 7
+
+                obstacles.append(obstaculo)
                 proxima_geracao_obstaculo = random.randint(30, 50)
+
         else:
             proxima_geracao_obstaculo -= 1
 
@@ -109,10 +128,18 @@ def main(modo_ia_param=False):
         for obstacle in obstacles[:]:
             obstacle.update(game_speed)
             obstacle.draw(SCREEN)
-
+          
             for player in players:
                 if player.alive and player.dino_rect.colliderect(obstacle.rect):
                     player.alive = False
+                    try:
+                        # Garante que só o primeiro entre os últimos mortos será o 'vencedor'
+                        global ultimo_vivo
+                        if all(not p.alive for p in players) and ultimo_vivo is None:
+                            ultimo_vivo = player
+                    except:
+                        pass
+
 
             if obstacle.rect.x < -obstacle.rect.width:
                 obstacles.remove(obstacle)
@@ -122,13 +149,38 @@ def main(modo_ia_param=False):
             obstaculo = obstacles[0]
             altura = obstaculo.rect.y
             distancia = obstaculo.rect.x
+            largura = obstaculo.rect.width
+
+            # Identificação do tipo unificado
+            if isinstance(obstaculo, SmallCactus):
+                tipo = 0  # Pequeno
+            elif isinstance(obstaculo, LargeCactus):
+                if obstaculo.type == 0:
+                    tipo = 1  # Grande - fino
+                else:
+                    tipo = 2  # Grande - largo (tipos 1 e 2 unidos)
+            elif isinstance(obstaculo, Bird):
+                if obstaculo.rect.y < 220:
+                    tipo = 3  # Pássaro alto
+                elif obstaculo.rect.y < 300:
+                    tipo = 4  # Pássaro médio
+                else:
+                    tipo = 5  # Pássaro baixo
+            else:
+                tipo = -1
+
             for idx, player in enumerate(players):
                 dino_status[idx]["distancia"] = distancia - player.dino_rect.x
                 dino_status[idx]["altura"] = altura
+                dino_status[idx]["tipo"] = tipo
+                dino_status[idx]["largura"] = largura
         else:
             for status in dino_status:
                 status["distancia"] = -1
                 status["altura"] = -1
+                status["tipo"] = None
+                status["largura"] = None
+
 
         velocidade_atual = game_speed
 
