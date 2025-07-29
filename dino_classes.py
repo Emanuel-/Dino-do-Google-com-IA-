@@ -139,6 +139,7 @@ class SmallCactus(Obstacle):
         self.type = random.randint(0, 2)
         super().__init__(image, self.type, screen_width)
         self.rect.y = 325
+        self.tipo_unificado = self.type  # 0, 1, 2
 
 
 class LargeCactus(Obstacle):
@@ -146,6 +147,7 @@ class LargeCactus(Obstacle):
         self.type = random.randint(0, 2)
         super().__init__(image, self.type, screen_width)
         self.rect.y = 300
+        self.tipo_unificado = 3 if self.type == 0 else 4  # 3 ou 4
 
 
 class Bird(Obstacle):
@@ -155,6 +157,14 @@ class Bird(Obstacle):
         alturas = [200, 250, 320]
         self.rect.y = random.choice(alturas)
         self.index = 0
+
+        # Define tipo_unificado baseado na altura
+        if self.rect.y <= 210:
+            self.tipo_unificado = 5  # Pássaro alto
+        elif self.rect.y <= 270:
+            self.tipo_unificado = 6  # Pássaro médio
+        else:
+            self.tipo_unificado = 7  # Pássaro baixo
 
     def draw(self, screen):
         if self.index >= 9:

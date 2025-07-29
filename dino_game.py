@@ -99,7 +99,7 @@ def main(modo_ia_param=False):
         SCREEN.fill((255, 255, 255))
         userInput = pygame.key.get_pressed() if not modo_ia else [False] * 512
 
-        # Geração de obstáculos               
+        # Geração de obstáculos
         if proxima_geracao_obstaculo <= 0:
             if len(obstacles) == 0 or obstacles[-1].rect.x < 600:
                 choice = random.randint(0, 2)
@@ -118,11 +118,14 @@ def main(modo_ia_param=False):
                     else:
                         obstaculo.tipo_unificado = 7
 
-                obstacles.append(obstaculo)
-                proxima_geracao_obstaculo = random.randint(30, 50)
+                # 👇 Aqui imprimimos o tipo_unificado criado:
+                #print(f"[DEBUG] Obstáculo gerado - Tipo Unificado: {obstaculo.tipo_unificado}")
 
+                obstacles.append(obstaculo)
+                proxima_geracao_obstaculo = random.randint(50, 90)
         else:
             proxima_geracao_obstaculo -= 1
+
 
         # Atualiza obstáculos
         for obstacle in obstacles[:]:
@@ -160,14 +163,15 @@ def main(modo_ia_param=False):
                 else:
                     tipo = 2  # Grande - largo (tipos 1 e 2 unidos)
             elif isinstance(obstaculo, Bird):
-                if obstaculo.rect.y < 220:
-                    tipo = 3  # Pássaro alto
-                elif obstaculo.rect.y < 300:
-                    tipo = 4  # Pássaro médio
+                if obstaculo.rect.y <= 210:
+                    tipo = 5  # Pássaro alto
+                elif obstaculo.rect.y <= 270:
+                    tipo = 6  # Pássaro médio
                 else:
-                    tipo = 5  # Pássaro baixo
+                    tipo = 7  # Pássaro baixo
             else:
                 tipo = -1
+
 
             for idx, player in enumerate(players):
                 dino_status[idx]["distancia"] = distancia - player.dino_rect.x
