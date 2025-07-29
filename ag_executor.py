@@ -4,20 +4,21 @@ import operator
 import math
 from gerador_dados import gerar_base_simples
 
-# ----- Configuração do GP (Programação Genética) -----
-pset = gp.PrimitiveSetTyped("MAIN", [float, float, int], str)  # distancia, altura, tipo -> acao
-pset.renameArguments(ARG0="distancia")
-pset.renameArguments(ARG1="altura")
-pset.renameArguments(ARG2="tipo")
+# ----- Configuração do GP -----
+# Agora com velocidade como entrada (float)
+pset = gp.PrimitiveSetTyped("MAIN", [float, float, float, int], str)
+pset.renameArguments(ARG0="velocidade") 
+pset.renameArguments(ARG1="distancia")
+pset.renameArguments(ARG2="altura")
+pset.renameArguments(ARG3="tipo")
 
-# Funções auxiliares
 def if_then_else(cond, out1, out2):
     return out1 if cond else out2
 
 def protected_div(a, b):
     return a / b if b != 0 else 1
 
-# Primitivas
+# Primitivas e terminais
 pset.addPrimitive(operator.lt, [float, float], bool)
 pset.addPrimitive(operator.gt, [float, float], bool)
 pset.addPrimitive(operator.eq, [int, int], bool)
@@ -28,11 +29,10 @@ pset.addPrimitive(operator.sub, [float, float], float)
 pset.addPrimitive(operator.mul, [float, float], float)
 pset.addPrimitive(protected_div, [float, float], float)
 
-# Terminais
 for valor in ["jump", "duck", "nothing"]:
     pset.addTerminal(valor, str)
 
-for i in range(6):
+for i in range(8):
     pset.addTerminal(i, int)
 
 for val in [0.0, 1.0, 5.0, 10.0, 50.0, 100.0, 300.0]:
@@ -41,11 +41,10 @@ for val in [0.0, 1.0, 5.0, 10.0, 50.0, 100.0, 300.0]:
 pset.addTerminal(True, bool)
 pset.addTerminal(False, bool)
 
-# Tipos do indivíduo
+# Tipos
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
 
-# Toolbox
 toolbox = base.Toolbox()
 toolbox.register("expr", gp.genFull, pset=pset, min_=2, max_=4)
 toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr)
@@ -57,35 +56,41 @@ toolbox.register("select", tools.selTournament, tournsize=3)
 toolbox.decorate("mate", gp.staticLimit(key=len, max_value=17))
 toolbox.decorate("mutate", gp.staticLimit(key=len, max_value=17))
 
-# ----- Avalia uma árvore em todos os exemplos -----
+# Avaliação
 def avaliar_arvore(func, base):
     acertos = 0
     for exemplo in base:
-        pred = func(exemplo["distancia"], exemplo["altura"], exemplo["tipo"])
+        # Agora passando velocidade, distancia, altura, tipo
+        pred = func(exemplo["velocidade"], exemplo["distancia"], exemplo["altura"], exemplo["tipo"])
         if pred == exemplo["saida"]:
             acertos += 1
     return acertos
 
-# ----- Loop de evolução -----
-def executar_evolucao():
+# Loop de evolução
+def executar_evolucao(velocidades):
+    total_exemplos = 300 * len(velocidades)
+    print(f"🔁 Iniciando treinamento para velocidades: {velocidades} (Total de {total_exemplos} exemplos)")
+
+    # Gera base combinada
+    base_treinamento = []
+    for v in velocidades:
+        base_treinamento.extend(gerar_base_simples(velocidade=v, total=300))
+
     pop = toolbox.population(n=1000)
     geracao = 0
 
     while True:
-        base_treinamento = gerar_base_simples()
-
         for ind in pop:
             func = toolbox.compile(expr=ind)
             score = avaliar_arvore(func, base_treinamento)
             ind.fitness.values = (score,)
 
-        # Estatísticas
         pop.sort(key=lambda ind: ind.fitness.values[0], reverse=True)
-        melhores = pop[:10]
+        melhores = pop[:4]
         melhor_score = melhores[0].fitness.values[0]
-        percent_100 = sum(1 for ind in pop if ind.fitness.values[0] == 900) / len(pop)
+        percent_100 = sum(1 for ind in pop if ind.fitness.values[0] == total_exemplos) / len(pop)
 
-        print(f"Geração {geracao}: Melhor = {melhor_score} | 100% = {percent_100*100:.1f}%")
+        print(f"Geração {geracao}: Melhor = {melhor_score} / {total_exemplos} | 100% = {percent_100*100:.1f}%")
 
         if percent_100 >= 0.10:
             print("\n🎉 10% ou mais dos indivíduos gabaritaram!")
@@ -94,7 +99,7 @@ def executar_evolucao():
                     f.write(str(ind))
             break
 
-        # Evolui
+        # Evolução
         descendentes = []
         while len(descendentes) < len(pop):
             pais = toolbox.select(pop, 2)
@@ -116,4 +121,5 @@ def executar_evolucao():
         geracao += 1
 
 if __name__ == "__main__":
-    executar_evolucao()
+    # Exemplo: treinar para velocidades 20 a 26
+    executar_evolucao([20, 21, 22, 23, 24, 25, 26])

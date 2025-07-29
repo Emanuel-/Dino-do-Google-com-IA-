@@ -3,43 +3,51 @@ import threading
 import time
 import random
 import dino_game
-from treinador import get_proxima_quadra, registrar_resultados, evoluir_populacao
+from ag_executor import executar_evolucao
+from gp_runtime_utils import converter_em_funcao
 
-arvores_gp = get_proxima_quadra()  # 4 funções (1 por Dino)
 jogo_rodando = False
 ciclo_automatico = True
 melhor_pontuacao = 0
-tempo_abaixado = {i: 0 for i in range(4)}
+tempo_abaixado = [0 for _ in range(4)]
 ultimo_vivo = None
 mensagem_vencedor_exibida = False
+velocidade_maxima = 60
+velocidades_utilizadas = [20]
 
+# --- Carrega as 4 melhores árvores
+def carregar_arvores_txt():
+    funcoes = []
+    for i in range(4):
+        caminho = f"melhor_arvore_{i}.txt"
+        with open(caminho, "r") as f:
+            texto = f.read()
+        funcoes.append(converter_em_funcao(texto))
+    return funcoes
+
+arvores_melhores = []
 
 def decidir_acao(numero_dino, altura, distancia, velocidade, tipo_obstaculo=None, largura=None):
-    if not arvores_gp or numero_dino >= len(arvores_gp):
+    if distancia is None or altura is None or tipo_obstaculo is None:
+        return 0  # nothing
+
+    try:
+        func = arvores_melhores[numero_dino]
+        resposta = func(velocidade, distancia, altura, tipo_obstaculo)  # ordem corrigida
+
+        if resposta == "jump":
+            return 1
+        elif resposta == "duck":
+            return -1
+        else:
+            return 0
+    except Exception as e:
+        print(f"[ERRO Dino {numero_dino}] {e}")
         return 0
 
 
-
-
-    velocidade_norm = (velocidade - 20) / 40
-    min_distancia = -440
-    max_distancia = 1260
-    distancia_norm = (distancia - min_distancia) / (max_distancia - min_distancia)
-    distancia_norm = min(max(distancia_norm, 0), 1)
-
-    tipo = int(tipo_obstaculo) if tipo_obstaculo is not None else 0
-
-    acao_str = arvores_gp[numero_dino](velocidade_norm, distancia_norm, tipo)
-
-    if acao_str == "jump":
-        return 1
-    elif acao_str == "duck":
-        return -1
-    return 0
-
-
 def iniciar_jogo():
-    global jogo_rodando, ultimo_vivo, mensagem_vencedor_exibida, arvores_gp
+    global jogo_rodando, ultimo_vivo, mensagem_vencedor_exibida
 
     if jogo_rodando:
         return
@@ -51,44 +59,23 @@ def iniciar_jogo():
     botao_iniciar.config(state=tk.DISABLED)
 
     def rodar_jogo():
-        global jogo_rodando, melhor_pontuacao, arvores_gp
+        global jogo_rodando, melhor_pontuacao
 
-        time.sleep(1)
         dino_game.start_game(modo_ia_param=True)
         jogo_rodando = False
 
-        # Coleta de pontuação e velocidade final de cada Dino
         pontuacoes = [player.pontos for player in dino_game.players]
-        velocidades = [dino_game.velocidade_atual] * 4
-
-        # Atualiza melhor pontuação
         melhor_atual = max(pontuacoes)
         if melhor_atual > melhor_pontuacao:
             melhor_pontuacao = melhor_atual
-            print(" "*70, end="\r")
-            print(f"Novo melhor desempenho: Pontuação {melhor_atual}", end="\r")
+            print(f"Novo melhor desempenho: Pontuação {melhor_atual}")
         else:
-            print(" "*70, end="\r")
-            print(f"Desempenho {melhor_atual} não superou o melhor {melhor_pontuacao}", end="\r")
-
-        # Registrar os resultados (pontuação + velocidade)
-        registrar_resultados(pontuacoes, velocidades)
-
-        # Solicita próxima quadra de árvores
-        arvores_gp = get_proxima_quadra()
-        if arvores_gp is None:
-            print("Fim da geração. Evoluindo população...")
-            evoluir_populacao()
-            arvores_gp = get_proxima_quadra()
+            print(f"Desempenho {melhor_atual} não superou o melhor {melhor_pontuacao}")
 
         if ciclo_automatico:
-            time.sleep(2)
-            iniciar_jogo()
-        else:
-            botao_iniciar.config(state=tk.NORMAL)
+            proxima_velocidade()
 
     threading.Thread(target=rodar_jogo).start()
-
 
 def atualizar_info():
     global ultimo_vivo, mensagem_vencedor_exibida
@@ -105,12 +92,14 @@ def atualizar_info():
         player = dino_game.players[i]
         vivo = "Vivo" if player.alive else "Morto"
         tipo_txt = {
-            0: "Cacto Pequeno",
-            1: "Cacto Grande (solitário)",
-            2: "Cacto Grande (largo)",
-            3: "Pássaro Alto",
-            4: "Pássaro Médio",
-            5: "Pássaro Baixo"
+            0: "Cacto Pequeno Simples",
+            1: "Cacto Pequeno Duplo",
+            2: "Cacto Pequeno Triplo",
+            3: "Cacto Grande (solitário)",
+            4: "Cacto Grande (largo)",
+            5: "Pássaro Alto",
+            6: "Pássaro Médio",
+            7: "Pássaro Baixo"
         }.get(status.get("tipo"), "Nenhum")
 
         texto = (
@@ -144,13 +133,11 @@ def atualizar_info():
                 player.dino_duck = False
                 player.dino_run = False
                 player.dino_jump = True
-
             elif acao == -1 and not player.dino_jump:
                 tempo_abaixado[i] = 5
                 player.dino_duck = True
                 player.dino_run = False
                 player.dino_jump = False
-
             elif acao == 0 and not player.dino_jump:
                 player.dino_duck = False
                 player.dino_run = True
@@ -167,16 +154,38 @@ def atualizar_info():
 
     janela.after(200, atualizar_info)
 
-
 def parar_ciclo():
     global ciclo_automatico
     ciclo_automatico = False
     botao_iniciar.config(state=tk.NORMAL)
+    print("🛑 Ciclo automático parado.")
 
+def proxima_velocidade():
+    global velocidades_utilizadas, arvores_melhores
 
-# Interface
+    if velocidades_utilizadas[-1] >= velocidade_maxima:
+        print("✅ Velocidade máxima atingida. Encerrando ciclo.")
+        return
+
+    nova_velocidade = velocidades_utilizadas[-1] + 1
+    velocidades_utilizadas.append(nova_velocidade)
+    print(f"\n🚀 Iniciando nova rodada com velocidades: {velocidades_utilizadas}")
+
+    def treinar_e_reiniciar():
+        executar_evolucao(velocidades_utilizadas)
+        carregar_novas_arvores()
+        time.sleep(1)
+        iniciar_jogo()
+
+    threading.Thread(target=treinar_e_reiniciar).start()
+
+def carregar_novas_arvores():
+    global arvores_melhores
+    arvores_melhores = carregar_arvores_txt()
+
+# Interface Tkinter
 janela = tk.Tk()
-janela.title("Controle IA - Dino Game")
+janela.title("IA com Ciclo Automático - Dino Game")
 janela.geometry("400x500")
 
 botao_iniciar = tk.Button(janela, text="Iniciar Jogo", command=iniciar_jogo, font=("Arial", 14))
@@ -197,5 +206,16 @@ label_velocidade.pack(pady=10)
 label_vencedor = tk.Label(janela, text="", font=("Arial", 14), fg="green")
 label_vencedor.pack(pady=10)
 
+# Início automático
+def iniciar_primeira_rodada():
+    def treinar_e_iniciar():
+        executar_evolucao(velocidades_utilizadas)
+        carregar_novas_arvores()
+        time.sleep(1)
+        iniciar_jogo()
+
+    threading.Thread(target=treinar_e_iniciar).start()
+
 atualizar_info()
+iniciar_primeira_rodada()
 janela.mainloop()
